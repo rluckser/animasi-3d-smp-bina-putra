@@ -133,6 +133,52 @@
       .chip.break { background: #fdf3e0; }
       .chip.break.active { background: #e8a13a; }
 
+      /* ---------- Tombol menu atas & info waktu ringkas ---------- */
+      #topToggle {
+        position: fixed; top: 10px; right: 10px; z-index: 60;
+        display: flex; align-items: center; gap: 7px;
+        font: inherit; font-size: 13px; font-weight: 700; color: #fff;
+        background: #0e7a5f; border: none; border-radius: 999px;
+        padding: 7px 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(11,92,70,.35);
+      }
+      #topToggle:hover { background: #0b5c46; }
+      #miniClock {
+        position: fixed; top: 10px; left: 10px; z-index: 55; display: none;
+        font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+        padding: 8px 12px; pointer-events: none; white-space: nowrap;
+        max-width: calc(100vw - 130px); overflow: hidden; text-overflow: ellipsis;
+      }
+      body.top-hidden #hud, body.top-hidden #viewbar { display: none; }
+      body.top-hidden #miniClock { display: block; }
+      @media (min-width: 761px) { #viewbar { right: 124px; } }
+
+      /* ---------- Kepala bilah kontrol & keadaan terlipat ---------- */
+      #controls { max-height: 48vh; overflow-y: auto; }
+      #ctrlHead {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        margin-bottom: 8px;
+      }
+      #ctrlToggle {
+        display: flex; align-items: center; gap: 7px; flex: 0 0 auto;
+        font: inherit; font-size: 13px; font-weight: 700; color: #0b5c46;
+        background: #eef4f2; border: 1px solid rgba(23,49,43,.12); border-radius: 999px;
+        padding: 5px 12px; cursor: pointer;
+      }
+      #ctrlToggle:hover { background: #e3f0ec; }
+      #ctrlToggle .chev { display: inline-block; font-size: 12px; transition: transform .2s ease; }
+      #controls.collapsed #ctrlToggle .chev { transform: rotate(180deg); }
+      #miniInfo {
+        font-size: 12.5px; font-weight: 700; color: #40605a; font-variant-numeric: tabular-nums;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      #controls.collapsed #daybar,
+      #controls.collapsed #chips,
+      #controls.collapsed #sliderWrap,
+      #controls.collapsed .row1 > label { display: none; }
+      #controls.collapsed #ctrlHead { margin-bottom: 4px; }
+      body.ctrl-collapsed #hint { display: none; }
+      @media (prefers-reduced-motion: reduce) { #ctrlToggle .chev { transition: none; } }
+
       #hint {
         position: fixed; left: 10px; bottom: 132px; z-index: 15;
         font-size: 12px; color: #17312b; background: rgba(255,255,255,.8);
@@ -169,6 +215,9 @@
       <div class="clockrow"><span id="clock">07.20</span><span class="range" id="periodRange"></span></div>
     </div>
 
+    <button id="topToggle" type="button" aria-expanded="true" aria-label="Tampilkan atau sembunyikan menu atas"><span aria-hidden="true">☰</span><span id="topToggleTxt">Tutup</span></button>
+    <div id="miniClock" class="card">Kamis · Jam 1 · 07.20</div>
+
     <div id="viewbar">
       <div class="card">
         <button class="vbtn active" id="viewUmum" type="button">Gambaran Umum</button>
@@ -190,6 +239,10 @@
     <div id="hint">Seret untuk memutar kamera · cubit/scroll untuk zoom · klik guru atau kelas untuk info</div>
 
     <div id="controls" class="card">
+      <div id="ctrlHead">
+        <button id="ctrlToggle" type="button" aria-expanded="true" aria-label="Lipat atau buka kontrol waktu"><span class="chev" aria-hidden="true">▾</span><span>Kontrol Waktu</span></button>
+        <span id="miniInfo">Kamis · Jam 1 · 07.20</span>
+      </div>
       <div id="daybar" role="group" aria-label="Pilih hari"></div>
       <div class="row1">
         <button id="playBtn" type="button" aria-label="Jeda">❚❚</button>
@@ -1197,6 +1250,28 @@ document.getElementById("labelToggle").addEventListener("click", function () {
   teachers.forEach(function (t) { t.sprite.visible = labelsOn; });
 });
 
+/* ---------- Sembunyi/tampil menu (panel atas & bilah kontrol bawah) ---------- */
+var topToggle = document.getElementById("topToggle");
+var topToggleTxt = document.getElementById("topToggleTxt");
+var miniClockEl = document.getElementById("miniClock");
+var miniInfoEl = document.getElementById("miniInfo");
+function setTopHidden(v) {
+  document.body.classList.toggle("top-hidden", v);
+  topToggle.setAttribute("aria-expanded", String(!v));
+  topToggleTxt.textContent = v ? "Menu" : "Tutup";
+}
+topToggle.addEventListener("click", function () { setTopHidden(!document.body.classList.contains("top-hidden")); });
+var controlsEl = document.getElementById("controls");
+var ctrlToggle = document.getElementById("ctrlToggle");
+function setCtrlCollapsed(v) {
+  controlsEl.classList.toggle("collapsed", v);
+  document.body.classList.toggle("ctrl-collapsed", v);
+  ctrlToggle.setAttribute("aria-expanded", String(!v));
+}
+ctrlToggle.addEventListener("click", function () { setCtrlCollapsed(!controlsEl.classList.contains("collapsed")); });
+// Layar sempit: mulai ringkas supaya adegan 3D langsung terlihat luas
+if (window.innerWidth <= 760) { setTopHidden(true); setCtrlCollapsed(true); }
+
 /* ================= KONTROL WAKTU ================= */
 var chipsEl = document.getElementById("chips");
 var chipByPeriod = {};
@@ -1375,6 +1450,8 @@ function tick() {
       retargetAll(p); updateHUD(p);
     }
     clockEl.textContent = fmtTime(simMin);
+    var miniTxt = DAY.name + " · " + p.label + " · " + fmtTime(simMin);
+    if (miniClockEl.textContent !== miniTxt) { miniClockEl.textContent = miniTxt; miniInfoEl.textContent = miniTxt; }
     teachers.forEach(function (tc) { animateWalker(tc.walker, dt, t); });
     students.forEach(function (st) { animateWalker(st.walker, dt, t); });
     if (window.__flagGroup) {
